@@ -1,471 +1,479 @@
-##!/bin/bashlink
-#Instalador del BOT
-coo=1
-    clear && clear
-IVAR="/etc/http-instas"
-SCPT_DIR="/etc/SCRIPT"
-rm -f gera*
-source <(curl -sSL https://raw.githubusercontent.com/Hack-peru/Script/main/msg) >/dev/null
-#!/bin/bash
+#!/usr/bin/env bash
 
-# menu maker (opciones 1, 2, 3,.....)
+{ # this ensures the entire script is downloaded #
 
-flech='➮' cOlM='⁙' && TOP='‣' && TTini='=====>>►► 🐲' && TTfin='🐲 ◄◄<<=====' && TTcent='💥' && RRini='【  ★' && RRfin='★  】' && CHeko='✅' && ScT='🛡️' && FlT='⚔️' && BoLCC='🪦' && ceLL='🧬' && aLerT='⚠️' && lLaM='🔥' && pPIniT='∘' && bOTg='🤖' && rAy='⚡' && tTfIn='】' && TtfIn='【' tTfLe='►' && rUlq='🔰' && h0nG='🍄' && lLav3='🗝️' && m3ssg='📩' && pUn5A='⚜' && p1t0='•'
-cOpyRig='©' && mbar2=' •••••••••••••••••••••••'
-
-menu_func() {
-    local options=${#@}
-    local array
-    for ((num = 1; num <= $options; num++)); do
-        echo -ne "$(msg -verd " [$num]") $(msg -verm2 ">") "
-        array=(${!num})
-        case ${array[0]} in
-        "-vd") echo -e "\033[1;33m[!]\033[1;32m ${array[@]:1}" ;;
-        "-vm") echo -e "\033[1;33m[!]\033[1;31m ${array[@]:1}" ;;
-        "-fi") echo -e "${array[@]:2} ${array[1]}" ;;
-        -bar | -bar2 | -bar3 | -bar4) echo -e "\033[1;37m${array[@]:1}\n$(msg ${array[0]})" ;;
-        *) echo -e "\033[1;37m${array[@]}" ;;
-        esac
-    done
+nvm_has() {
+  type "$1" > /dev/null 2>&1
 }
 
-selection_fun() {
-    local selection="null"
-    local range
-    for ((i = 0; i <= $1; i++)); do range[$i]="$i "; done
-    while [[ ! $(echo ${range[*]} | grep -w "$selection") ]]; do
-        echo -ne "\033[1;37m ► Opcion : " >&2
-        read selection
-        tput cuu1 >&2 && tput dl1 >&2
-    done
-    echo $selection
+nvm_echo() {
+  command printf %s\\n "$*" 2>/dev/null
 }
 
-tittle() {
-    [[ -z $1 ]] && rt='adm-lite' || rt='ADMcgh'
-    clear && clear
-    msg -bar
-    echo -e "\033[1;44;44m   \033[1;33m=====>>►► 🐲 CYBER-PERU 💥 Plus 🐲 ◄◄<<=====  \033[0m \033[0;33m[$(less /etc/${rt}/v-local.log)]"
-    msg -bar
+if [ -z "${BASH_VERSION}" ] || [ -n "${ZSH_VERSION}" ]; then
+  # shellcheck disable=SC2016
+  nvm_echo >&2 'Error: the install instructions explicitly say to pipe the install script to `bash`; please follow them'
+  exit 1
+fi
+
+nvm_grep() {
+  GREP_OPTIONS='' command grep "$@"
 }
-in_opcion() {
-    unset opcion
-    if [[ -z $2 ]]; then
-        msg -nazu " $1: " >&2
+
+nvm_default_install_dir() {
+  [ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm"
+}
+
+nvm_install_dir() {
+  if [ -n "$NVM_DIR" ]; then
+    printf %s "${NVM_DIR}"
+  else
+    nvm_default_install_dir
+  fi
+}
+
+nvm_latest_version() {
+  nvm_echo "v0.39.5"
+}
+
+nvm_profile_is_bash_or_zsh() {
+  local TEST_PROFILE
+  TEST_PROFILE="${1-}"
+  case "${TEST_PROFILE-}" in
+    *"/.bashrc" | *"/.bash_profile" | *"/.zshrc" | *"/.zprofile")
+      return
+    ;;
+    *)
+      return 1
+    ;;
+  esac
+}
+
+#
+# Outputs the location to NVM depending on:
+# * The availability of $NVM_SOURCE
+# * The method used ("script" or "git" in the script, defaults to "git")
+# NVM_SOURCE always takes precedence unless the method is "script-nvm-exec"
+#
+nvm_source() {
+  local NVM_GITHUB_REPO
+  NVM_GITHUB_REPO="${NVM_INSTALL_GITHUB_REPO:-nvm-sh/nvm}"
+  local NVM_VERSION
+  NVM_VERSION="${NVM_INSTALL_VERSION:-$(nvm_latest_version)}"
+  local NVM_METHOD
+  NVM_METHOD="$1"
+  local NVM_SOURCE_URL
+  NVM_SOURCE_URL="$NVM_SOURCE"
+  if [ "_$NVM_METHOD" = "_script-nvm-exec" ]; then
+    NVM_SOURCE_URL="https://raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}/nvm-exec"
+  elif [ "_$NVM_METHOD" = "_script-nvm-bash-completion" ]; then
+    NVM_SOURCE_URL="https://raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}/bash_completion"
+  elif [ -z "$NVM_SOURCE_URL" ]; then
+    if [ "_$NVM_METHOD" = "_script" ]; then
+      NVM_SOURCE_URL="https://raw.githubusercontent.com/${NVM_GITHUB_REPO}/${NVM_VERSION}/nvm.sh"
+    elif [ "_$NVM_METHOD" = "_git" ] || [ -z "$NVM_METHOD" ]; then
+      NVM_SOURCE_URL="https://github.com/${NVM_GITHUB_REPO}.git"
     else
-        msg $1 " $2: " >&2
+      nvm_echo >&2 "Unexpected value \"$NVM_METHOD\" for \$NVM_METHOD"
+      return 1
     fi
-    read opcion
-    echo "$opcion"
+  fi
+  nvm_echo "$NVM_SOURCE_URL"
 }
-# centrado de texto
-print_center() {
-    if [[ -z $2 ]]; then
-        text="$1"
+
+#
+# Node.js version to install
+#
+nvm_node_version() {
+  nvm_echo "$NODE_VERSION"
+}
+
+nvm_download() {
+  if nvm_has "curl"; then
+    curl --fail --compressed -q "$@"
+  elif nvm_has "wget"; then
+    # Emulate curl with wget
+    ARGS=$(nvm_echo "$@" | command sed -e 's/--progress-bar /--progress=bar /' \
+                            -e 's/--compressed //' \
+                            -e 's/--fail //' \
+                            -e 's/-L //' \
+                            -e 's/-I /--server-response /' \
+                            -e 's/-s /-q /' \
+                            -e 's/-sS /-nv /' \
+                            -e 's/-o /-O /' \
+                            -e 's/-C - /-c /')
+    # shellcheck disable=SC2086
+    eval wget $ARGS
+  fi
+}
+
+install_nvm_from_git() {
+  local INSTALL_DIR
+  INSTALL_DIR="$(nvm_install_dir)"
+  local NVM_VERSION
+  NVM_VERSION="${NVM_INSTALL_VERSION:-$(nvm_latest_version)}"
+  if [ -n "${NVM_INSTALL_VERSION:-}" ]; then
+    # Check if version is an existing ref
+    if command git ls-remote "$(nvm_source "git")" "$NVM_VERSION" | nvm_grep -q "$NVM_VERSION" ; then
+      :
+    # Check if version is an existing changeset
+    elif ! nvm_download -o /dev/null "$(nvm_source "script-nvm-exec")"; then
+      nvm_echo >&2 "Failed to find '$NVM_VERSION' version."
+      exit 1
+    fi
+  fi
+
+  local fetch_error
+  if [ -d "$INSTALL_DIR/.git" ]; then
+    # Updating repo
+    nvm_echo "=> nvm is already installed in $INSTALL_DIR, trying to update using git"
+    command printf '\r=> '
+    fetch_error="Failed to update nvm with $NVM_VERSION, run 'git fetch' in $INSTALL_DIR yourself."
+  else
+    fetch_error="Failed to fetch origin with $NVM_VERSION. Please report this!"
+    nvm_echo "=> Downloading nvm from git to '$INSTALL_DIR'"
+    command printf '\r=> '
+    mkdir -p "${INSTALL_DIR}"
+    if [ "$(ls -A "${INSTALL_DIR}")" ]; then
+      # Initializing repo
+      command git init "${INSTALL_DIR}" || {
+        nvm_echo >&2 'Failed to initialize nvm repo. Please report this!'
+        exit 2
+      }
+      command git --git-dir="${INSTALL_DIR}/.git" remote add origin "$(nvm_source)" 2> /dev/null \
+        || command git --git-dir="${INSTALL_DIR}/.git" remote set-url origin "$(nvm_source)" || {
+        nvm_echo >&2 'Failed to add remote "origin" (or set the URL). Please report this!'
+        exit 2
+      }
     else
-        col="$1"
-        text="$2"
+      # Cloning repo
+      command git clone "$(nvm_source)" --depth=1 "${INSTALL_DIR}" || {
+        nvm_echo >&2 'Failed to clone nvm repo. Please report this!'
+        exit 2
+      }
     fi
-
-    while read line; do
-        unset space
-        x=$(((54 - ${#line}) / 2))
-        for ((i = 0; i < $x; i++)); do
-            space+=' '
-        done
-        space+="$line"
-        if [[ -z $2 ]]; then
-            msg -azu "$space"
-        else
-            msg "$col" "$space"
-        fi
-    done <<<$(echo -e "$text")
-}
-# titulos y encabesados
-title() {
-    clear
-    msg -bar
-    if [[ -z $2 ]]; then
-        print_center -azu "$1"
+  fi
+  # Try to fetch tag
+  if command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" fetch origin tag "$NVM_VERSION" --depth=1 2>/dev/null; then
+    :
+  # Fetch given version
+  elif ! command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" fetch origin "$NVM_VERSION" --depth=1; then
+    nvm_echo >&2 "$fetch_error"
+    exit 1
+  fi
+  command git -c advice.detachedHead=false --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" checkout -f --quiet FETCH_HEAD || {
+    nvm_echo >&2 "Failed to checkout the given version $NVM_VERSION. Please report this!"
+    exit 2
+  }
+  if [ -n "$(command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" show-ref refs/heads/master)" ]; then
+    if command git --no-pager --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" branch --quiet 2>/dev/null; then
+      command git --no-pager --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" branch --quiet -D master >/dev/null 2>&1
     else
-        print_center "$1" "$2"
+      nvm_echo >&2 "Your version of git is out of date. Please update it!"
+      command git --no-pager --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" branch -D master >/dev/null 2>&1
     fi
-    msg -bar
+  fi
+
+  nvm_echo "=> Compressing and cleaning up git repository"
+  if ! command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" reflog expire --expire=now --all; then
+    nvm_echo >&2 "Your version of git is out of date. Please update it!"
+  fi
+  if ! command git --git-dir="$INSTALL_DIR"/.git --work-tree="$INSTALL_DIR" gc --auto --aggressive --prune=now ; then
+    nvm_echo >&2 "Your version of git is out of date. Please update it!"
+  fi
+  return
 }
 
-# finalizacion de tareas
-enter() {
-    msg -bar
-    text="►► Presione enter para continuar ◄◄"
-    if [[ -z $1 ]]; then
-        print_center -ama "$text"
+#
+# Automatically install Node.js
+#
+nvm_install_node() {
+  local NODE_VERSION_LOCAL
+  NODE_VERSION_LOCAL="$(nvm_node_version)"
+
+  if [ -z "$NODE_VERSION_LOCAL" ]; then
+    return 0
+  fi
+
+  nvm_echo "=> Installing Node.js version $NODE_VERSION_LOCAL"
+  nvm install "$NODE_VERSION_LOCAL"
+  local CURRENT_NVM_NODE
+
+  CURRENT_NVM_NODE="$(nvm_version current)"
+  if [ "$(nvm_version "$NODE_VERSION_LOCAL")" == "$CURRENT_NVM_NODE" ]; then
+    nvm_echo "=> Node.js version $NODE_VERSION_LOCAL has been successfully installed"
+  else
+    nvm_echo >&2 "Failed to install Node.js $NODE_VERSION_LOCAL"
+  fi
+}
+
+install_nvm_as_script() {
+  local INSTALL_DIR
+  INSTALL_DIR="$(nvm_install_dir)"
+  local NVM_SOURCE_LOCAL
+  NVM_SOURCE_LOCAL="$(nvm_source script)"
+  local NVM_EXEC_SOURCE
+  NVM_EXEC_SOURCE="$(nvm_source script-nvm-exec)"
+  local NVM_BASH_COMPLETION_SOURCE
+  NVM_BASH_COMPLETION_SOURCE="$(nvm_source script-nvm-bash-completion)"
+
+  # Downloading to $INSTALL_DIR
+  mkdir -p "$INSTALL_DIR"
+  if [ -f "$INSTALL_DIR/nvm.sh" ]; then
+    nvm_echo "=> nvm is already installed in $INSTALL_DIR, trying to update the script"
+  else
+    nvm_echo "=> Downloading nvm as script to '$INSTALL_DIR'"
+  fi
+  nvm_download -s "$NVM_SOURCE_LOCAL" -o "$INSTALL_DIR/nvm.sh" || {
+    nvm_echo >&2 "Failed to download '$NVM_SOURCE_LOCAL'"
+    return 1
+  } &
+  nvm_download -s "$NVM_EXEC_SOURCE" -o "$INSTALL_DIR/nvm-exec" || {
+    nvm_echo >&2 "Failed to download '$NVM_EXEC_SOURCE'"
+    return 2
+  } &
+  nvm_download -s "$NVM_BASH_COMPLETION_SOURCE" -o "$INSTALL_DIR/bash_completion" || {
+    nvm_echo >&2 "Failed to download '$NVM_BASH_COMPLETION_SOURCE'"
+    return 2
+  } &
+  for job in $(jobs -p | command sort)
+  do
+    wait "$job" || return $?
+  done
+  chmod a+x "$INSTALL_DIR/nvm-exec" || {
+    nvm_echo >&2 "Failed to mark '$INSTALL_DIR/nvm-exec' as executable"
+    return 3
+  }
+}
+
+nvm_try_profile() {
+  if [ -z "${1-}" ] || [ ! -f "${1}" ]; then
+    return 1
+  fi
+  nvm_echo "${1}"
+}
+
+#
+# Detect profile file if not specified as environment variable
+# (eg: PROFILE=~/.myprofile)
+# The echo'ed path is guaranteed to be an existing file
+# Otherwise, an empty string is returned
+#
+nvm_detect_profile() {
+  if [ "${PROFILE-}" = '/dev/null' ]; then
+    # the user has specifically requested NOT to have nvm touch their profile
+    return
+  fi
+
+  if [ -n "${PROFILE}" ] && [ -f "${PROFILE}" ]; then
+    nvm_echo "${PROFILE}"
+    return
+  fi
+
+  local DETECTED_PROFILE
+  DETECTED_PROFILE=''
+
+  if [ "${SHELL#*bash}" != "$SHELL" ]; then
+    if [ -f "$HOME/.bashrc" ]; then
+      DETECTED_PROFILE="$HOME/.bashrc"
+    elif [ -f "$HOME/.bash_profile" ]; then
+      DETECTED_PROFILE="$HOME/.bash_profile"
+    fi
+  elif [ "${SHELL#*zsh}" != "$SHELL" ]; then
+    if [ -f "$HOME/.zshrc" ]; then
+      DETECTED_PROFILE="$HOME/.zshrc"
+    elif [ -f "$HOME/.zprofile" ]; then
+      DETECTED_PROFILE="$HOME/.zprofile"
+    fi
+  fi
+
+  if [ -z "$DETECTED_PROFILE" ]; then
+    for EACH_PROFILE in ".profile" ".bashrc" ".bash_profile" ".zprofile" ".zshrc"
+    do
+      if DETECTED_PROFILE="$(nvm_try_profile "${HOME}/${EACH_PROFILE}")"; then
+        break
+      fi
+    done
+  fi
+
+  if [ -n "$DETECTED_PROFILE" ]; then
+    nvm_echo "$DETECTED_PROFILE"
+  fi
+}
+
+#
+# Check whether the user has any globally-installed npm modules in their system
+# Node, and warn them if so.
+#
+nvm_check_global_modules() {
+  local NPM_COMMAND
+  NPM_COMMAND="$(command -v npm 2>/dev/null)" || return 0
+  [ -n "${NVM_DIR}" ] && [ -z "${NPM_COMMAND%%"$NVM_DIR"/*}" ] && return 0
+
+  local NPM_VERSION
+  NPM_VERSION="$(npm --version)"
+  NPM_VERSION="${NPM_VERSION:--1}"
+  [ "${NPM_VERSION%%[!-0-9]*}" -gt 0 ] || return 0
+
+  local NPM_GLOBAL_MODULES
+  NPM_GLOBAL_MODULES="$(
+    npm list -g --depth=0 |
+    command sed -e '/ npm@/d' -e '/ (empty)$/d'
+  )"
+
+  local MODULE_COUNT
+  MODULE_COUNT="$(
+    command printf %s\\n "$NPM_GLOBAL_MODULES" |
+    command sed -ne '1!p' |                     # Remove the first line
+    wc -l | command tr -d ' '                   # Count entries
+  )"
+
+  if [ "${MODULE_COUNT}" != '0' ]; then
+    # shellcheck disable=SC2016
+    nvm_echo '=> You currently have modules installed globally with `npm`. These will no'
+    # shellcheck disable=SC2016
+    nvm_echo '=> longer be linked to the active version of Node when you install a new node'
+    # shellcheck disable=SC2016
+    nvm_echo '=> with `nvm`; and they may (depending on how you construct your `$PATH`)'
+    # shellcheck disable=SC2016
+    nvm_echo '=> override the binaries of modules installed with `nvm`:'
+    nvm_echo
+
+    command printf %s\\n "$NPM_GLOBAL_MODULES"
+    nvm_echo '=> If you wish to uninstall them at a later point (or re-install them under your'
+    # shellcheck disable=SC2016
+    nvm_echo '=> `nvm` Nodes), you can remove them from the system Node as follows:'
+    nvm_echo
+    nvm_echo '     $ nvm use system'
+    nvm_echo '     $ npm uninstall -g a_module'
+    nvm_echo
+  fi
+}
+
+nvm_do_install() {
+  if [ -n "${NVM_DIR-}" ] && ! [ -d "${NVM_DIR}" ]; then
+    if [ -e "${NVM_DIR}" ]; then
+      nvm_echo >&2 "File \"${NVM_DIR}\" has the same name as installation directory."
+      exit 1
+    fi
+
+    if [ "${NVM_DIR}" = "$(nvm_default_install_dir)" ]; then
+      mkdir "${NVM_DIR}"
     else
-        print_center "$1" "$text"
+      nvm_echo >&2 "You have \$NVM_DIR set to \"${NVM_DIR}\", but that directory does not exist. Check your profile files and environment."
+      exit 1
     fi
-    read
-}
-
-# opcion, regresar volver/atras
-back() {
-    msg -bar
-    echo -ne "$(msg -verd " [0]") $(msg -verm2 ">") " && msg -bra "\033[1;41mVOLVER"
-    msg -bar
-}
-
-msg() {
-    local colors="/etc/new-adm-color"
-    if [[ ! -e $colors ]]; then
-        COLOR[0]='\033[1;37m' #BRAN='\033[1;37m'
-        COLOR[1]='\e[31m'     #VERMELHO='\e[31m'
-        COLOR[2]='\e[32m'     #VERDE='\e[32m'
-        COLOR[3]='\e[33m'     #AMARELO='\e[33m'
-        COLOR[4]='\e[34m'     #AZUL='\e[34m'
-        COLOR[5]='\e[35m'     #MAGENTA='\e[35m'
-        COLOR[6]='\033[1;97m' #MAG='\033[1;36m'
-        COLOR[7]='\033[1;49;95m'
-        COLOR[8]='\033[1;49;96m'
+  fi
+  # Disable the optional which check, https://www.shellcheck.net/wiki/SC2230
+  # shellcheck disable=SC2230
+  if nvm_has xcode-select && [ "$(xcode-select -p >/dev/null 2>/dev/null ; echo $?)" = '2' ] && [ "$(which git)" = '/usr/bin/git' ] && [ "$(which curl)" = '/usr/bin/curl' ]; then
+    nvm_echo >&2 'You may be on a Mac, and need to install the Xcode Command Line Developer Tools.'
+    # shellcheck disable=SC2016
+    nvm_echo >&2 'If so, run `xcode-select --install` and try again. If not, please report this!'
+    exit 1
+  fi
+  if [ -z "${METHOD}" ]; then
+    # Autodetect install method
+    if nvm_has git; then
+      install_nvm_from_git
+    elif nvm_has curl || nvm_has wget; then
+      install_nvm_as_script
     else
-        local COL=0
-        for number in $(cat $colors); do
-            case $number in
-            1) COLOR[$COL]='\033[1;37m' ;;
-            2) COLOR[$COL]='\e[31m' ;;
-            3) COLOR[$COL]='\e[32m' ;;
-            4) COLOR[$COL]='\e[33m' ;;
-            5) COLOR[$COL]='\e[34m' ;;
-            6) COLOR[$COL]='\e[35m' ;;
-            7) COLOR[$COL]='\033[1;36m' ;;
-            8) COLOR[$COL]='\033[1;49;95m' ;;
-            9) COLOR[$COL]='\033[1;49;96m' ;;
-            esac
-            let COL++
-        done
+      nvm_echo >&2 'You need git, curl, or wget to install nvm'
+      exit 1
     fi
-    NEGRITO='\e[1m'
-    SEMCOR='\e[0m'
-    case $1 in
-    -ne) cor="${COLOR[1]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}" ;;
-    -ama) cor="${COLOR[3]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -verm) cor="${COLOR[3]}${NEGRITO}[!] ${COLOR[1]}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -verm2) cor="${COLOR[1]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -aqua) cor="${COLOR[8]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -azu) cor="${COLOR[6]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -verd) cor="${COLOR[2]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -bra) cor="${COLOR[0]}${SEMCOR}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -nazu) cor="${COLOR[6]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}" ;;
-    -nverd) cor="${COLOR[2]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}" ;;
-    -nama) cor="${COLOR[3]}${NEGRITO}" && echo -ne "${cor}${2}${SEMCOR}" ;;
-    -verm3) cor="${COLOR[1]}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -teal) cor="${COLOR[7]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -teal2) cor="${COLOR[7]}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -blak) cor="${COLOR[8]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -blak2) cor="${COLOR[8]}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -blu) cor="${COLOR[9]}${NEGRITO}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    -blu1) cor="${COLOR[9]}" && echo -e "${cor}${2}${SEMCOR}" ;;
-    #-bar)ccor="${COLOR[1]}•••••••••••••••••••••••••••••••••••••••••••••••••" && echo -e "${SEMCOR}${ccor}${SEMCOR}";;
-    -bar) ccor="${COLOR[1]}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" && echo -e "${SEMCOR}${ccor}${SEMCOR}" ;;
-    -bar1) ccor="${COLOR[1]}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" && echo -e "${SEMCOR}${ccor}${SEMCOR}" ;;
-    -bar2) ccor="${COLOR[1]}=====================================================" && echo -e "${SEMCOR}${ccor}${SEMCOR}" ;;
-    -bar3) ccor="${COLOR[3]}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" && echo -e "${SEMCOR}${ccor}${SEMCOR}" ;;
-    -bar4) ccor="${COLOR[5]}•••••••••••••••••••••••••••••••••••••••••••••••••" && echo -e "${SEMCOR}${ccor}${SEMCOR}" ;;
-    esac
+  elif [ "${METHOD}" = 'git' ]; then
+    if ! nvm_has git; then
+      nvm_echo >&2 "You need git to install nvm"
+      exit 1
+    fi
+    install_nvm_from_git
+  elif [ "${METHOD}" = 'script' ]; then
+    if ! nvm_has curl && ! nvm_has wget; then
+      nvm_echo >&2 "You need curl or wget to install nvm"
+      exit 1
+    fi
+    install_nvm_as_script
+  else
+    nvm_echo >&2 "The environment variable \$METHOD is set to \"${METHOD}\", which is not recognized as a valid installation method."
+    exit 1
+  fi
+
+  nvm_echo
+
+  local NVM_PROFILE
+  NVM_PROFILE="$(nvm_detect_profile)"
+  local PROFILE_INSTALL_DIR
+  PROFILE_INSTALL_DIR="$(nvm_install_dir | command sed "s:^$HOME:\$HOME:")"
+
+  SOURCE_STR="\\nexport NVM_DIR=\"${PROFILE_INSTALL_DIR}\"\\n[ -s \"\$NVM_DIR/nvm.sh\" ] && \\. \"\$NVM_DIR/nvm.sh\"  # This loads nvm\\n"
+
+  # shellcheck disable=SC2016
+  COMPLETION_STR='[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion\n'
+  BASH_OR_ZSH=false
+
+  if [ -z "${NVM_PROFILE-}" ] ; then
+    local TRIED_PROFILE
+    if [ -n "${PROFILE}" ]; then
+      TRIED_PROFILE="${NVM_PROFILE} (as defined in \$PROFILE), "
+    fi
+    nvm_echo "=> Profile not found. Tried ${TRIED_PROFILE-}~/.bashrc, ~/.bash_profile, ~/.zprofile, ~/.zshrc, and ~/.profile."
+    nvm_echo "=> Create one of them and run this script again"
+    nvm_echo "   OR"
+    nvm_echo "=> Append the following lines to the correct file yourself:"
+    command printf "${SOURCE_STR}"
+    nvm_echo
+  else
+    if nvm_profile_is_bash_or_zsh "${NVM_PROFILE-}"; then
+      BASH_OR_ZSH=true
+    fi
+    if ! command grep -qc '/nvm.sh' "$NVM_PROFILE"; then
+      nvm_echo "=> Appending nvm source string to $NVM_PROFILE"
+      command printf "${SOURCE_STR}" >> "$NVM_PROFILE"
+    else
+      nvm_echo "=> nvm source string already in ${NVM_PROFILE}"
+    fi
+    # shellcheck disable=SC2016
+    if ${BASH_OR_ZSH} && ! command grep -qc '$NVM_DIR/bash_completion' "$NVM_PROFILE"; then
+      nvm_echo "=> Appending bash_completion source string to $NVM_PROFILE"
+      command printf "$COMPLETION_STR" >> "$NVM_PROFILE"
+    else
+      nvm_echo "=> bash_completion source string already in ${NVM_PROFILE}"
+    fi
+  fi
+  if ${BASH_OR_ZSH} && [ -z "${NVM_PROFILE-}" ] ; then
+    nvm_echo "=> Please also append the following lines to the if you are using bash/zsh shell:"
+    command printf "${COMPLETION_STR}"
+  fi
+
+  # Source nvm
+  # shellcheck source=/dev/null
+  \. "$(nvm_install_dir)/nvm.sh"
+
+  nvm_check_global_modules
+
+  nvm_install_node
+
+  nvm_reset
+
+  nvm_echo "=> Close and reopen your terminal to start using nvm or run the following to use it now:"
+  command printf "${SOURCE_STR}"
+  if ${BASH_OR_ZSH} ; then
+    command printf "${COMPLETION_STR}"
+  fi
 }
 
-fun_bar() {
-    comando[0]="$1"
-    comando[1]="$2"
-    (
-        [[ -e $HOME/fim ]] && rm $HOME/fim
-        ${comando[0]} -y >/dev/null 2>&1
-        ${comando[1]} -y >/dev/null 2>&1
-        touch $HOME/fim
-    ) >/dev/null 2>&1 &
-    echo -ne "\033[1;33m ["
-    while true; do
-        for ((i = 0; i < 18; i++)); do
-            echo -ne "\033[1;31m##"
-            sleep 0.1s
-        done
-        [[ -e $HOME/fim ]] && rm $HOME/fim && break
-        echo -e "\033[1;33m]"
-        sleep 1s
-        tput cuu1
-        tput dl1
-        echo -ne "\033[1;33m ["
-    done
-    echo -e "\033[1;33m]\033[1;31m -\033[1;32m 100%\033[1;37m"
+#
+# Unsets the various functions defined
+# during the execution of the install script
+#
+nvm_reset() {
+  unset -f nvm_has nvm_install_dir nvm_latest_version nvm_profile_is_bash_or_zsh \
+    nvm_source nvm_node_version nvm_download install_nvm_from_git nvm_install_node \
+    install_nvm_as_script nvm_try_profile nvm_detect_profile nvm_check_global_modules \
+    nvm_do_install nvm_reset nvm_default_install_dir nvm_grep
 }
 
-del() {
-    for ((i = 0; i < $1; i++)); do
-        tput cuu1 && tput dl1
-    done
-}
+[ "_$NVM_ENV" = "_testing" ] || nvm_do_install
 
-[[ -d /bin/ejecutar ]] && {
-    [[ -e /bin/ejecutar/msg ]] || wget -q -O /bin/ejecutar/msg https://raw.githubusercontent.com/Hack-peru/Script/main/msg
-} || mkdir /bin/ejecutar
-cor[0]="\033[0m"
-cor[1]="\033[1;34m"
-cor[2]="\033[1;32m"
-cor[3]="\033[1;37m"
-cor[4]="\033[1;36m"
-cor[5]="\033[1;33m"
-cor[6]="\033[1;35m"
-export -f msg
-export -f fun_bar
-export -f tittle
-export -f enter
-export -f back
-export -f print_center
-export -f in_opcion
-export -f del
-
-add-apt-repository universe
-apt update -y
-apt upgrade -y
-
-install_ini() {
-    clear
-    msg -bar
-    echo -e "\033[92m        -- INSTALANDO PAQUETES NECESARIOS -- "
-    msg -bar
-    ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    locale-gen en_US.UTF-8 >/dev/null 2>&1
-    update-locale LANG=en_US.UTF-8 >/dev/null 2>&1
-    echo -e "\033[97m  # Instalando  UTF...................... $ESTATUS "
-    apt-get install gawk -y >/dev/null 2>&1
-    #bc
-    [[ $(dpkg --get-selections | grep -w "jq" | head -1) ]] || apt-get install jq -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "jq" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "jq" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install jq................... $ESTATUS "
-    #SCREEN
-    [[ $(dpkg --get-selections | grep -w "screen" | head -1) ]] || apt-get install screen -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "screen" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "screen" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install screen............... $ESTATUS "
-    #apache2
-    [[ $(dpkg --get-selections | grep -w "apache2" | head -1) ]] || {
-        apt-get install apache2 -y &>/dev/null
-        sed -i "s;Listen 80;Listen 81;g" /etc/apache2/ports.conf
-        service apache2 restart >/dev/null 2>&1 &
-    }
-    [[ $(dpkg --get-selections | grep -w "apache2" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "apache2" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install apache2.............. $ESTATUS "
-    #curl
-    [[ $(dpkg --get-selections | grep -w "curl" | head -1) ]] || apt-get install curl -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "curl" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "curl" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install curl................. $ESTATUS "
-    #socat
-    [[ $(dpkg --get-selections | grep -w "socat" | head -1) ]] || apt-get install socat -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "socat" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "socat" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install socat................ $ESTATUS "
-    #netcat
-    [[ $(dpkg --get-selections | grep -w "netcat" | head -1) ]] || apt-get install netcat -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "netcat" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "netcat" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install netcat............... $ESTATUS "
-    #netcat-traditional
-    [[ $(dpkg --get-selections | grep -w "netcat-traditional" | head -1) ]] || apt-get install netcat-traditional -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "netcat-traditional" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "netcat-traditional" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install netcat-traditional... $ESTATUS "
-    #net-tools
-    [[ $(dpkg --get-selections | grep -w "net-tools" | head -1) ]] || apt-get install net-tools -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "net-tools" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "net-tools" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install net-tools............ $ESTATUS "
-    #cowsay
-    [[ $(dpkg --get-selections | grep -w "cowsay" | head -1) ]] || apt-get install cowsay -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "cowsay" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "cowsay" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install cowsay............... $ESTATUS "
-    #figlet
-    [[ $(dpkg --get-selections | grep -w "figlet" | head -1) ]] || apt-get install figlet -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "figlet" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "figlet" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install figlet............... $ESTATUS "
-    #lolcat
-    apt-get install lolcat -y &>/dev/null
-    sudo gem install lolcat &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "lolcat" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "lolcat" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install lolcat............... $ESTATUS "
-    #PV
-    [[ $(dpkg --get-selections | grep -w "pv" | head -1) ]] || apt-get install pv -y &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "pv" | head -1) ]] || ESTATUS=$(echo -e "\033[91mFALLO DE INSTALACION") &>/dev/null
-    [[ $(dpkg --get-selections | grep -w "pv" | head -1) ]] && ESTATUS=$(echo -e "\033[92mINSTALADO") &>/dev/null
-    echo -e "\033[97m  # apt-get install PV   ................ $ESTATUS "
-    msg -bar
-    echo -e "\033[92m La instalacion de paquetes necesarios a finalizado"
-    msg -bar
-    echo -e "\033[97m Si la instalacion de paquetes tiene fallas"
-    echo -ne "\033[97m     Reintentar Install Paquetes [ s/n ]: "
-    read inst
-    [[ $inst = @(s|S|y|Y) ]] && install_ini
-}
-
-check_ip() {
-    MIP=$(ip addr | grep 'inet' | grep -v inet6 | grep -vE '127\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | grep -o -E '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -1)
-    MIP2=$(wget -qO- ipv4.icanhazip.com)
-    [[ "$MIP" != "$MIP2" ]] && IP="$MIP2" || IP="$MIP"
-    echo "$IP" >/usr/bin/vendor_code
-}
-function_verify() {
-    unset keybot
-    msg -bar
-    [[ ! -e /etc/nivbot ]] && echo >/etc/nivbot
-    echo -e "\e[31m          BOTGEN PREMIUM @SCRIPTPE_BOT\e[32m"
-    [[ "$(echo "$(cat </etc/nivbot)")" < "3" ]] && {
-        [[ -e /bin/downloadbot ]] && {
-            [[ -z $(cat </bin/downloadbot) ]] && read -p " DIGITE SI O NO : " keybot || unset keybot
-        }
-    } || read -p " DIGITE SI O NO: " keybot
-    [[ -z $keybot ]] && {
-        [[ -e /bin/downloadbot ]] && link="$(cat </bin/downloadbot)" || link='https://raw.githubusercontent.com'
-        [[ $link = 'https://raw.githubusercontent.com' ]] && echo "CONTROL MEDIANTE GitHub" || echo "CONTROL EXTERNO"
-        permited=$(curl -sSL "https://raw.githubusercontent.com/Hack-peru/bot/main/bot")
-    } || {
-        permited=$(curl -sSL "https://raw.githubusercontent.com/Hack-peru/bot/main/bot")
-        [[ -z $keybot ]] && echo $link >/bin/downloadbot || echo -e "$(ofus $keybot)" >/bin/downloadbot
-    }
-    permited=$(curl -sSL "https://raw.githubusercontent.com/Hack-peru/bot/main/bot")
-    [[ $(echo $permited | grep "${IP}") = "" ]] || {
-        clear
-        msg -bar
-        echo -e "\n"
-        echo -e "\e[31m    LA IP $(wget -qO- ipv4.icanhazip.com) FUE RECHAZADA!"
-        echo -e " $link No AUTORIZADA el ACCESO "
-        echo -e " SI DESEAS USAR EL BOTGEN CONTACTE A @SCRIPTPE_BOT"
-        msg -bar
-        [[ -e "/bin/ShellBot.sh" ]] && rm /bin/ShellBot.sh
-        [[ -e /bin/downloadbot ]] && rm -f /bin/downloadbot
-        echo -e "\n"
-        msg -bar
-        exit 1
-    } && {
-        ### INTALAR VERCION DE SCRIPT
-        clear && clear
-        msg -bar
-        echo -e "\e[32m      LA IP $(wget -qO- ipv4.icanhazip.com) ESTA AUTORIZADA!"
-        [[ -e /usr/bin/downBase ]] || echo 'https://raw.githubusercontent.com/Hack-peru/bot/main/lista' >/usr/bin/downBase && chmod 777 /usr/bin/downBase
-        v1=$(curl -sSL "https://raw.githubusercontent.com/NetVPS/Multi-Script/main/ChuGH-5.7u/adm-lite/v-local.log")
-        [[ ! -e /bin/downloadbot ]] && {
-            [[ $link = 'https://raw.githubusercontent.com' ]] && echo "https://raw.githubusercontent.com" >/bin/downloadbot || echo "$(ofus $keybot)" >/bin/downloadbot
-            chmod +x /bin/downloadbot
-        }
-        [[ -e /etc/nivbot ]] && {
-            i=$(cat </etc/nivbot)
-            lv=$(($i + 1))
-            echo $lv >/etc/nivbot
-        } || echo "1" >/etc/nivbot
-        echo $Key >/etc/valkey && chmod +x /etc/valkey
-        [[ -e /usr/bin/downBase ]] || echo 'https://raw.githubusercontent.com/Hack-peru/bot/main/lista' >/usr/bin/downBase && chmod 777 /usr/bin/downBase
-        [[ -e /bin/ShellBot.sh ]] && wget -O /bin/ShellBot.sh https://raw.githubusercontent.com/NetVPS/Generador-BOT/main/Otros/ShellBot.sh >/dev/null && chmod +rwx /bin/ShellBot.sh
-
-        sleep 3s
-    }
-
-}
-
-echo '0' >/etc/http-instas 
-[[ -d $SCPT_DIR ]] && rm -rf $SCPT_DIR
-
-#CORES
-cor[1]="\033[1;36m"
-cor[2]="\033[1;32m"
-cor[3]="\033[1;31m"
-cor[4]="\033[1;33m"
-cor[0]="\033[1;37m"
-
-#TEXTOS
-
-#COMPARA
-fun_filez() {
-    fup="$HOME/update"
-    echo "$1" >>$HOME/files.log
-    [[ $1 = 'http-server.py' ]] && mv -f ${fup}/$1 /bin/http-server.sh && chmod +x /bin/http-server.sh
-    [[ -e $1 ]] && mv -f ${fup}/$1 /etc/SCRIPT/$1
-}
-
-ofus() {
-    unset txtofus
-    number=$(expr length $1)
-    for ((i = 1; i < $number + 1; i++)); do
-        txt[$i]=$(echo "$1" | cut -b $i)
-        case ${txt[$i]} in
-        ".") txt[$i]="v" ;;
-        "v") txt[$i]="." ;;
-        "1") txt[$i]="@" ;;
-        "@") txt[$i]="1" ;;
-        "2") txt[$i]="?" ;;
-        "?") txt[$i]="2" ;;
-        "4") txt[$i]="p" ;;
-        "p") txt[$i]="4" ;;
-        "-") txt[$i]="L" ;;
-        "L") txt[$i]="-" ;;
-        esac
-        txtofus+="${txt[$i]}"
-    done
-    echo "$txtofus" | rev
-}
-
-DOWS() {
-    wget -O /root/lista https://raw.githubusercontent.com/Hack-peru/bot/main/lista
-    wget --no-check-certificate -i $HOME/lista
-}
-
-function aguarde() {
-    sleep 1
-    fun_ejec=$1
-    helice() {
-        DOWS >/dev/null 2>&1 &
-        tput civis
-        while [ -d /proc/$! ]; do
-            for i in / - \\ \|; do
-                sleep .1
-                echo -ne "\e[1D$i"
-            done
-        done
-        tput cnorm
-    }
-    echo -ne "\033[1;37m TRASLADANDO FILES \033[1;32mSCRIPT \033[1;37me \033[1;32mAUTOGEN\033[1;32m.\033[1;33m.\033[1;31m. \033[1;33m"
-    helice
-    echo -e "\e[1D REALIZADO"
-}
-
-atualiza_fun() {
-    msg -bar
-    [[ -d ./update ]] && rm -rf ./update/* || mkdir ./update
-    cd ./update/
-    aguarde
-    unset arqs
-    n=1
-    rm -f $HOME/files.log
-    for arqs in $(ls $HOME/update); do
-        echo -ne "\033[1;33m FILE \e[32m [${n}.gen] \e[0m "
-        fun_filez $arqs >/dev/null 2>&1 && echo -e "\033[1;31m- \033[1;31m $arqs (no Trasladado!)" || echo -e "\033[1;31m- \033[1;32m $arqs Trasladado!"
-        n=$(($n + 1))
-    done
-    mkdir -p /etc/SCRIPT
-    mv -f /root/update/* /etc/SCRIPT/
-    wget -q -O /usr/bin/gerar https://raw.githubusercontent.com/Hack-peru/bot/main/gerador.sh && chmod +rwx /usr/bin/gerar
-    cd $HOME
-    msg -bar
-    echo -e "\033[1;92m           DIGITE EL COMANDO: \033[1;33mgerar  "
-    msg -bar
-    [[ -e $HOME/lista ]] && rm $HOME/lista
-    [[ -d $HOME/update ]] && rm -rf $HOME/update
-}
-
-unset Key
-[[ $1 = '--install' ]] && install_ini
-[[ $1 = '' ]] && clear && echo " DESTRUYENDO FICHERO rm -rf /bin " && exit
-clear
-check_ip
-function_verify
-atualiza_fun
+} # this ensures the entire script is downloaded #
